@@ -1,1 +1,136 @@
+#create database:
 
+CREATE DATABASE cred_rails
+    WITH
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'en_US.UTF-8'
+    LC_CTYPE = 'en_US.UTF-8'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1
+    IS_TEMPLATE = False;
+
+#create auto increment sequence for company id:
+
+CREATE SEQUENCE IF NOT EXISTS public.seq_company_id
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    CACHE 1;
+
+ALTER SEQUENCE public.seq_company_id
+    OWNER TO postgres;
+	
+GRANT SELECT ON SEQUENCE public.seq_company_id TO public;
+
+GRANT ALL ON SEQUENCE public.seq_company_id TO postgres;
+
+#create auto increment sequence for transactions table id:
+
+CREATE SEQUENCE IF NOT EXISTS public.seq_trans_table_id
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854770000
+    CACHE 1;
+
+ALTER SEQUENCE public.seq_trans_table_id
+    OWNER TO postgres;
+	
+GRANT SELECT ON SEQUENCE public.seq_trans_table_id TO PUBLIC;
+
+GRANT ALL ON SEQUENCE public.seq_trans_table_id TO postgres;
+
+
+#create auto increment sequence for customer id:
+
+CREATE SEQUENCE IF NOT EXISTS public.seq_customer_id
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854770000
+    CACHE 1;
+
+ALTER SEQUENCE public.seq_customer_id
+    OWNER TO postgres;
+
+#create enum type for industry_type  column on company table:
+
+CREATE TYPE industry AS ENUM ('agency_banking','insurance','other');
+
+#create enum type for transaction_type  column on transaction table:
+
+CREATE TYPE transaction AS ENUM ('credit', 'debit');
+
+#create company table:
+
+CREATE TABLE IF NOT EXISTS tbl_company
+(
+    id integer PRIMARY KEY NOT NULL DEFAULT nextval('seq_company_id'),
+    name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    country character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    address character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    zip_code character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    industry_type industry,
+	CONSTRAINT company_name UNIQUE(name)
+);
+
+
+#create customers table:
+
+CREATE TABLE IF NOT EXISTS tbl_customers
+(
+    id bigint PRIMARY KEY NOT NULL DEFAULT nextval('seq_customer_id'::regclass),
+    first_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    last_name character varying(1000) COLLATE pg_catalog."default" NOT NULL,
+    age integer NOT NULL,
+    phone_number character varying(50) COLLATE pg_catalog."default" NOT NULL,
+	company_id INT references tbl_company(id)
+);
+
+#create transactions table:
+
+create TABLE IF NOT EXISTS tbl_transactions
+(
+ id int PRIMARY KEY DEFAULT NEXTVAL('seq_trans_table_id'),
+ transaction_id BIGINT NOT NULL,
+transaction_type transaction,
+matched BOOLEAN NOT NULL,
+other_transaction_id BIGINT REFERENCES tbl_transactions(transaction_id),
+recorded_at timestamp not null,
+company_id INT references tbl_company(id),
+customer_id BIGINT references tbl_customers(id),
+CONSTRAINT trans_id UNIQUE(transaction_id));
+
+
+
+#create index on transaction_type column  on tbl_transactions:
+
+CREATE INDEX IF NOT EXISTS tbl_transactions_transaction_type_idx
+    ON public.tbl_transactions USING btree
+    (transaction_type)
+    TABLESPACE pg_default;
+
+#create index on recorded_at column on tbl_transactions:
+
+CREATE INDEX IF NOT EXISTS tbl_transactions_recorded_at_idx
+    ON public.tbl_transactions USING btree
+    (recorded_at ASC NULLS LAST)
+    TABLESPACE pg_default;
+	
+	
+#create index on industry_type column  on tbl_company:
+
+CREATE INDEX IF NOT EXISTS tbl_company_industry_type_idx
+    ON public.tbl_company USING btree
+    (industry_type)
+    TABLESPACE pg_default;
+	
+#create index on company_id column on tbl_customers:
+
+CREATE INDEX IF NOT EXISTS tbl_customers_company_id_idx
+    ON public.tbl_customers USING btree
+    (company_id)
+    TABLESPACE pg_default;
+	
