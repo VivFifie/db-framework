@@ -1,1 +1,13 @@
+#create a view that references tbl_transactions table:
+
+CREATE OR REPLACE VIEW public.vw_transactions
+ AS
+select transaction_id,recorded_at, matched, company_id,other_transaction_id from tbl_transactions;
+
+
+#SQL query that will automatically update the matched field to TRUE for transactions that reference another transaction in the other_transaction_id column
+
+UPDATE tbl_transactions t1
+SET matched = TRUE
+WHERE EXISTS ( SELECT 1 FROM tbl_transactions t2 WHERE t2.other_transaction_id = t1.transaction_id);
 
