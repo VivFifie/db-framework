@@ -1,1 +1,69 @@
+#My proposal to efficiently scaling the transactions table would be to use both partitioning and sharding strategies. Here is why:
+
+#1.Sharding:
+
+#From the description given the number of companies is bound to grow and we will have large data volumes per company across many regions. 
+
+#Therefore sharding will assist distribute the data across multiple databases based on the company id. This allows each instance operate independently thus allowing us to achieve horizontal scaling.
+
+#Each shard to handle its own subset of data without overlapping and causing read/write bottlenecks.
+
+#To create shards on 3 different databases:
+
+#Shard 1 (for company_id between 1 and 1000)
+CREATE DATABASE shard_database_1;
+
+#Shard 2 (for company_id between 1001 and 2000)
+CREATE DATABASE shard_database_2;
+
+#Shard 3 (for company_id above 2000)
+CREATE DATABASE shard_database_3;
+
+#In shard database create tbl_transactions table:
+
+CREATE TABLE IF NOT EXISTS tbl_transactions
+(
+    id SERIAL PRIMARY KEY,
+    transaction_id BIGINT NOT NULL,
+    transaction_type transaction,
+    matched BOOLEAN NOT NULL,
+    other_transaction_id BIGINT,
+    recorded_at TIMESTAMP NOT NULL,
+    company_id INT NOT NULL, 
+    customer_id BIGINT REFERENCES tbl_customers(id),
+    CONSTRAINT trans_id UNIQUE(transaction_id)
+);
+
+
+#2. Partitioning:
+
+#Despite having broken down the transaction tables into shards. Each company shard is still growing to big. To handle this efficiently we can further partition the table by range #based on the recorded_at column. I would recommend monthly partions to ensure small datasets.
+
+#This will ensure faster queries if we need data for a specific period as we will query a specific partition.
+
+#Further to this data archival and vacuuming will be easy as we can target a specific patition without affecting the rest of the partitions. 
+
+#Create the parent tbl_transactions table:
+
+CREATE TABLE IF NOT EXISTS tbl_transactions
+(
+    id SERIAL PRIMARY KEY,
+    transaction_id BIGINT NOT NULL,
+    transaction_type transaction,
+    matched BOOLEAN NOT NULL,
+    other_transaction_id BIGINT,
+    recorded_at TIMESTAMP NOT NULL,
+    company_id INT NOT NULL, 
+    customer_id BIGINT REFERENCES tbl_customers(id),
+    CONSTRAINT trans_id UNIQUE(transaction_id)
+);
+
+#Create partitions for the tbl_transaction table by range on the recorded_at column, the sql script will be as below:
+
+CREATE TABLE tbl_transactions_202407 PARTITION OF tbl_transactions FOR VALUES FROM ('2024-08-01') TO ('2024-07-31');
+
+CREATE TABLE tbl_transactions_202408 PARTITION OF tbl_transactions FOR VALUES FROM ('2024-08-01') TO ('2024-08-31');
+
+CREATE TABLE tbl_transactions_202409 PARTITION OF tbl_transactions FOR VALUES FROM ('2024-09-01') TO ('2024-09-30');
+
 
